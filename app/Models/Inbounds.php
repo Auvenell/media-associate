@@ -10,8 +10,10 @@ class Inbounds extends Model
     use HasFactory;
     protected $table = 'inbounds';
     protected $fillable = [
-                    'url',
-                    'notes',
-                    'source'
+        'user_id',
+        'url',
+        'notes',
+        'summary',
+        'source'
     ];
 }
