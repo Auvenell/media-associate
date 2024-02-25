@@ -23,6 +23,7 @@ class InboundsController extends Controller
         $inbounds->url = $request->url;
         $inbounds->notes = $request->notes ? $request->notes : '';
         $inbounds->source = parse_url($inbounds->url, PHP_URL_HOST);
+        $inbounds->user_id = $request->user_id;
 
         $inboundId = $this->getLastInbound();
 

@@ -56,7 +56,7 @@ class SourceHandler
 
     private function callAPI($query)
     {
-        $url ='http://192.168.1.236:1234/v1/chat/completions';
+        $url = env('AI_API_URL', 'http://localhost:1234/v1/chat/completions');
         // Set up cURL
         $ch = curl_init($url);
 
