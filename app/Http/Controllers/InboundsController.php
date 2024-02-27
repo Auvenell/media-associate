@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Inbounds;
-use App\Services\SourceHandler;
+use App\Services\Agents;
 use App\Services\Sources\TwitterX;
 
 class InboundsController extends Controller
@@ -17,7 +17,7 @@ class InboundsController extends Controller
 
     public function receiveInbounds(Request $request)
     {
-        $AIAgent = new SourceHandler;
+        $AIAgent = new Agents;
         $inbounds = new Inbounds;
 
         $inbounds->url = $request->url;

@@ -4,23 +4,26 @@ namespace App\Services;
 
 use App\Models\Inbounds;
 use App\Services\Sources\TwitterX;
+use App\Services\AI\AIService;
 use Illuminate\Support\Facades\DB;
 use Exception;
 
-class SourceHandler
+class Agents
 {
     public function retrievalAgent($text)
     {
+        $agent = new AIService;
         $roleDescription = 'You are a retriever that parses out text.';
         $taskDescription = 'Parse out the text content and the publish date from' . $text;
 
         $query = $this->query($roleDescription, $taskDescription);
-        $response = $this->callAPI($query);
+        $response = $agent->callAPI($query);
         return $response;
     }
 
     public function summaryAgent($data, $notes)
     {
+        $agent = new AIService;
         $roleDescription = 'You are a summarizer that takes information and makes it easily digestible.';
         $taskDescription = 'Given the following: ' . $data;
         if(!empty($notes)){
@@ -29,7 +32,7 @@ class SourceHandler
         $taskDescription .= ' produce a paragraph or sentence to summarize the information and make sure the date is mentioned at the end';
 
         $query = $this->query($roleDescription, $taskDescription);
-        $response = $this->callAPI($query);
+        $response = $agent->callAPI($query);
         return $response;
     }
 
@@ -52,31 +55,5 @@ class SourceHandler
         );
 
         return $aiQuery;
-    }
-
-    private function callAPI($query)
-    {
-        $url = env('AI_API_URL', 'http://localhost:1234/v1/chat/completions');
-        // Set up cURL
-        $ch = curl_init($url);
-
-        // Set cURL options
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($query));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        // Execute the request
-        $response = curl_exec($ch);
-
-        // Check for errors
-        if (curl_errno($ch)) {
-            echo 'Error: ' . curl_error($ch);
-        }
-
-        // Close cURL resource
-        curl_close($ch);
-
-        return response()->json($response);
     }
 }
