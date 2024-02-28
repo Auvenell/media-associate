@@ -2,10 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Inbounds;
-use App\Services\Sources\TwitterX;
 use App\Services\AI\AIService;
-use Illuminate\Support\Facades\DB;
 use Exception;
 
 class Agents
@@ -16,7 +13,7 @@ class Agents
         $roleDescription = 'You are a retriever that parses out text.';
         $taskDescription = 'Parse out the text content and the publish date from' . $text;
 
-        $query = $this->query($roleDescription, $taskDescription);
+        $query = $agent->query($roleDescription, $taskDescription);
         $response = $agent->callAPI($query);
         return $response;
     }
@@ -31,29 +28,20 @@ class Agents
         }
         $taskDescription .= ' produce a paragraph or sentence to summarize the information and make sure the date is mentioned at the end';
 
-        $query = $this->query($roleDescription, $taskDescription);
+        $query = $agent->query($roleDescription, $taskDescription);
         $response = $agent->callAPI($query);
         return $response;
     }
 
-    private function query($roleDescription, $taskDescription)
+    public function genericRetrievalAgent($text)
     {
-        $aiQuery = array(
-            'messages' => array(
-                array(
-                    'role' => 'system',
-                    'content' => $roleDescription
-                ),
-                array(
-                    'role' => 'user',
-                    'content' => $taskDescription
-                )
-            ),
-            'temperature' => 0.2,
-            'max_tokens' => -1,
-            'stream' => false
-        );
+        $agent = new AIService;
+        $roleDescription = 'Below is an instruction that describes a task. Write a response that appropriately completes the request.';
+        $taskDescription = '"Get the article from this document:
 
-        return $aiQuery;
+' . $text . '"';
+        $query = $agent->query($roleDescription, $taskDescription);
+        $response = $agent->callAPI($query);
+        return $response;
     }
 }

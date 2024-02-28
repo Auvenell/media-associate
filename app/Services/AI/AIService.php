@@ -34,4 +34,25 @@ class AIService
 
         return response()->json($response);
     }
+
+    public function query($roleDescription, $taskDescription)
+    {
+        $aiQuery = array(
+            'messages' => array(
+                array(
+                    'role' => 'system',
+                    'content' => $roleDescription
+                ),
+                array(
+                    'role' => 'user',
+                    'content' => $taskDescription
+                )
+            ),
+            'temperature' => 0.2,
+            'max_tokens' => -1,
+            'stream' => false
+        );
+
+        return $aiQuery;
+    }
 }

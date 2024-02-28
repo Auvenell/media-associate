@@ -6,15 +6,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Inbounds;
 use App\Services\Agents;
+use App\Services\Sources\Generic;
 use App\Services\Sources\TwitterX;
-
+use App\Services\Sources\SiteList;
+use Exception;
 class InboundsController extends Controller
 {
-    /**
-     * Basic Inbound DB Functions
-     * Primary processing site of post requests: receiveInbounds
-    */
-
     public function receiveInbounds(Request $request)
     {
         $AIAgent = new Agents;
@@ -27,7 +24,7 @@ class InboundsController extends Controller
 
         $inboundId = $this->getLastInbound();
 
-        if($inbounds->source === 'x.com' || $inbounds->source === 'twitter.com'){
+        if(in_array($inbounds->source, SiteList::$twitterUrls)){
             $twitterXHandler = new TwitterX;
             $tweetRaw = $twitterXHandler->handleTwitterX($inbounds->url);
             $content = $tweetRaw['text'];
@@ -46,6 +43,27 @@ class InboundsController extends Controller
             $inbounds->summary = $summaryContent;
         }
 
+        if(!in_array($inbounds->source, SiteList::$twitterUrls)){
+            $genericSite = new Generic;
+            $genericSite->genericSiteHandler($inbounds->url);
+            sleep(2);
+            $filePath = '../site-data/content.txt'; // set the path to the file you want to read
+            $handle = fopen($filePath, "r"); // open the file with read permissions
+
+            if ($handle) {
+                $contents = fread($handle, filesize($filePath));
+                fclose($handle);
+                print_r('"'.$contents.'"');die; // CONTENTS NOT COMING IN PROPERLY
+                $originalArticle = $AIAgent->genericRetrievalAgent($contents);
+                //echo $contents;
+                print_r($originalArticle);
+            }
+            die;
+        }
+
+        if(empty($inbounds->summary)){
+            $inbounds->summary = 'blank';
+        }
         $inbounds->save();
         $relayResponse = $inbounds->summary;
         $relayResponse .='
