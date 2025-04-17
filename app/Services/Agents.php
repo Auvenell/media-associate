@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Services\AI\AIService;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class Agents
@@ -15,7 +16,7 @@ class Agents
 
         $query = $agent->query($roleDescription, $taskDescription);
         $response = $agent->callAPI($query);
-        return $response;
+        return $response['message']['content'] ?? null;
     }
 
     public function summaryAgent($data, $notes)
@@ -23,25 +24,14 @@ class Agents
         $agent = new AIService;
         $roleDescription = 'You are a summarizer that takes information and makes it easily digestible.';
         $taskDescription = 'Given the following: ' . $data;
-        if(!empty($notes)){
+        if (!empty($notes)) {
             $taskDescription .= ' and ' . '"' . $notes . '"';
         }
-        $taskDescription .= ' produce a paragraph or sentence to summarize the information and make sure the date is mentioned at the end';
+        $taskDescription .= ' produce a paragraph or sentence to summarize the information and make sure the date is mentioned at the end. Don\'t talk to the user directly.';
 
         $query = $agent->query($roleDescription, $taskDescription);
         $response = $agent->callAPI($query);
-        return $response;
-    }
-
-    public function genericRetrievalAgent($text)
-    {
-        $agent = new AIService;
-        $roleDescription = 'Below is an instruction that describes a task. Write a response that appropriately completes the request.';
-        $taskDescription = '"Get the article from this document:
-
-' . $text . '"';
-        $query = $agent->query($roleDescription, $taskDescription);
-        $response = $agent->callAPI($query);
-        return $response;
+        // Log::info('Ollama summaryAgent raw response', ['response' => $response]);
+        return $response['message']['content'] ?? null;
     }
 }

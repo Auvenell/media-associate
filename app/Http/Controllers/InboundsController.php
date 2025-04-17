@@ -3,39 +3,52 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Inbounds;
 use App\Services\Agents;
 use App\Services\Sources\Generic;
 use App\Services\Sources\TwitterX;
 use App\Services\Sources\SiteList;
 use Exception;
+use Illuminate\Http\JsonResponse;
+
 class InboundsController extends Controller
 {
     public function receiveInbounds(Request $request)
     {
-        $AIAgent = new Agents;
+        $agent = new Agents;
         $inbounds = new Inbounds;
 
-        $inbounds->url = $request->url;
+        if ($request->hasFile('pdf') && $request->file('pdf')->isValid()) {
+            $pdf = $request->file('pdf');
+            $filename = time() . '-' . $pdf->getClientOriginalName();
+            $destinationPath = '../site-data/';
+            $pdf->move($destinationPath, $filename);
+        }
+
         $inbounds->notes = $request->notes ? $request->notes : '';
-        $inbounds->source = parse_url($inbounds->url, PHP_URL_HOST);
-        $inbounds->user_id = $request->user_id;
 
-        $inboundId = $this->getLastInbound();
+        if (empty($inbounds->source)) {
+            $inbounds->source = parse_url(json_decode($inbounds->url), PHP_URL_HOST);
+        }
+        $inbounds->user_id = $request->user_id ?? 1;
 
-        if(in_array($inbounds->source, SiteList::$twitterUrls)){ // if Twitter URL
+        // $inboundId = $this->getLastInbound();
+
+        if (in_array($inbounds->source, SiteList::$twitterUrls)) { // specific handling for Twitter URLs
             $twitterXHandler = new TwitterX;
-            $tweetRaw = $twitterXHandler->handleTwitterX($inbounds->url);
+            $tweetRaw = $twitterXHandler->handleTwitterX($request->url);
             $content = $tweetRaw['text'];
             $author = $tweetRaw['author'];
 
-            $tweetData = $AIAgent->retrievalAgent($content);
+            $tweetData = $agent->retrievalAgent($content);
             $tweetContent = response()->json([$tweetData]);
             $tweetContent = json_decode($tweetContent->getContent(), true)[0]['original'];
             $tweetContent = json_decode($tweetContent, true)['choices'][0]['message']['content'];
 
-            $summary = $AIAgent->summaryAgent($tweetContent, $inbounds->notes);
+            $summary = $agent->summaryAgent($tweetContent, $inbounds->notes);
             $summaryContent = response()->json([$summary]);
             $summaryContent = json_decode($summaryContent->getContent(), true)[0]['original'];
             $summaryContent = json_decode($summaryContent, true)['choices'][0]['message']['content'];
@@ -43,42 +56,24 @@ class InboundsController extends Controller
             $inbounds->summary = $summaryContent;
         }
 
-        if(!in_array($inbounds->source, SiteList::$twitterUrls)){
+        if (!in_array($inbounds->source, SiteList::$twitterUrls)) { // all other sites
             $genericSite = new Generic;
-            $genericSite->genericSiteHandler($inbounds->url); // launch applescript to capture website html
-            sleep(15); // wait for capture
+            $convertedFilePath = $genericSite->genericSiteHandler($filename); // convert PDF & get text file path
+            $articleContent = file_get_contents($convertedFilePath); // get article content
+            $url = $genericSite->getUrlFromPdfText($articleContent); // get article url
+            $inbounds->url = $url[0] ?? null;
+            $inbounds->source = parse_url($inbounds->url, PHP_URL_HOST); // get article publisher
+            // exit();
 
-            $directoryPath = '../site-data/';
-            $files = scandir($directoryPath); // get contents of site-data directory
-
-            $genericSite->convertHtmltoTxt(); // run html to text conversion
-            sleep(5); // wait for conversion
-
-            if (file_exists($directoryPath . $files[2])) { // clean-up captured doc
-                unlink($directoryPath . $files[2]);
+            $summaryContent = $agent->summaryAgent($articleContent, $inbounds->notes);
+            $inbounds->summary = $summaryContent; // attach summary to model
+            if (empty($inbounds->summary)) { // blank value for db in case of failure
+                $inbounds->summary = null;
             }
 
-            $files = scandir($directoryPath); // update contents of site-data directory
-            $content = file_get_contents($directoryPath . $files[2]); // store contents of text file
-
-            $summary = $AIAgent->genericRetrievalAgent($content); // get AI summary
-
-            if (file_exists($directoryPath . $files[2])) { // clean-up converted doc
-                unlink($directoryPath . $files[2]);
-            }
-
-            return response()->json([$summary], 201);
+            $inbounds->save(); // save to db
+            return response()->json($summaryContent, 201);
         }
-
-        /* if(empty($inbounds->summary)){
-            $inbounds->summary = 'blank';
-        }
-        $inbounds->save();
-        $relayResponse = $inbounds->summary;
-        $relayResponse .='
-
-Summary Generated by Mistral-7B-Instruct-v0.1-GGUF';
-        return response()->json([$relayResponse], 201); */
     }
 
     public function showAllInbounds()
@@ -90,8 +85,7 @@ Summary Generated by Mistral-7B-Instruct-v0.1-GGUF';
     public function showInbound($id)
     {
         $inbounds = Inbounds::find($id);
-        if(!empty($inbounds))
-        {
+        if (!empty($inbounds)) {
             return response()->json($inbounds);
         } else {
             return response()->json(['message' => 'Post Not Found'], 404);
@@ -107,8 +101,7 @@ Summary Generated by Mistral-7B-Instruct-v0.1-GGUF';
     public function updateInbound(Request $request, $id)
     {
         $inbounds = Inbounds::find($id);
-        if(!empty($inbounds))
-        {
+        if (!empty($inbounds)) {
             $inbounds->url = $request->url;
             $inbounds->notes = $request->notes;
             $inbounds->save();
@@ -121,8 +114,7 @@ Summary Generated by Mistral-7B-Instruct-v0.1-GGUF';
     public function removeInbound($id)
     {
         $inbounds = Inbounds::find($id);
-        if(!empty($inbounds))
-        {
+        if (!empty($inbounds)) {
             $inbounds->delete();
             return response()->json(['message' => 'Post Destroyed'], 200);
         } else {

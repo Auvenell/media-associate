@@ -5,39 +5,45 @@ namespace App\Services\AI;
 use App\Models\Inbounds;
 use App\Services\Sources\TwitterX;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class AIService
 {
     public function callAPI($query)
     {
-        $url = env('AI_API_URL', 'http://localhost:1234/v1/chat/completions');
-        // Set up cURL
+        $url = env('AI_API_URL', 'http://host.docker.internal:11434/api/chat'); // access Ollama from Docker
         $ch = curl_init($url);
 
-        // Set cURL options
         curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($query));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
-        // Execute the request
         $response = curl_exec($ch);
 
-        // Check for errors
         if (curl_errno($ch)) {
-            echo 'Error: ' . curl_error($ch);
+            Log::error('Ollama cURL Error: ' . curl_error($ch));
+            curl_close($ch);
+            return null;
         }
 
-        // Close cURL resource
         curl_close($ch);
 
-        return response()->json($response);
+        $decoded = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Log::error('Ollama JSON Decode Error: ' . json_last_error_msg());
+            return null;
+        }
+
+        return $decoded;
     }
 
     public function query($roleDescription, $taskDescription)
     {
         $aiQuery = array(
+            'model' => 'qwen2.5:14b-instruct-q8_0',
             'messages' => array(
                 array(
                     'role' => 'system',
