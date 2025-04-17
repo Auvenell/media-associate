@@ -42,4 +42,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function inbounds()
+    {
+        return $this->hasMany(\App\Models\Inbounds::class);
+    }
 }

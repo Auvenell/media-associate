@@ -102,8 +102,9 @@ class InboundsController extends Controller
     {
         $inbounds = Inbounds::find($id);
         if (!empty($inbounds)) {
-            $inbounds->url = $request->url;
-            $inbounds->notes = $request->notes;
+            $inbounds->url = $request->url ?? $inbounds->url;
+            $inbounds->notes = $request->notes ?? $inbounds->notes;
+            $inbounds->summary = $request->summary ?? $inbounds->summary;
             $inbounds->save();
             return response()->json(['message' => 'Post Updated'], 200);
         } else {
