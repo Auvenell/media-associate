@@ -21,11 +21,11 @@ export default function Dashboard({ auth, inbounds = [] }) {
                         <div className="p-6 text-gray-900">
                             You're logged in!
                         </div>
-                        <div className="mt-6">
+                        <div className="mt-6 px-5 py-4">
                             <h3 className="text-lg font-bold mb-4">
                                 Your Inbounds
                             </h3>
-                            <div className="flex flex-wrap gap-4 bg-gray-50 p-4 rounded-lg">
+                            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 bg-gray-50 p-6 rounded-lg">
                                 {inbounds.map((item) => {
                                     const [summary, setSummary] = useState(
                                         item.summary
@@ -47,7 +47,7 @@ export default function Dashboard({ auth, inbounds = [] }) {
                                     return (
                                         <div
                                             key={item.id}
-                                            className="flex flex-col p-4 border rounded-lg shadow-sm bg-white hover:shadow-md transition-shadow w-full sm:w-1/2 md:w-1/3 xl:w-1/4"
+                                            className="flex flex-col p-4 border rounded-lg shadow-sm bg-white hover:shadow-md transition-shadow w-full"
                                         >
                                             <a
                                                 href={item.url}
