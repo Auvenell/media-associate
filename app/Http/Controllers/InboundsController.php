@@ -11,6 +11,7 @@ use App\Services\Agents;
 use App\Services\Sources\Generic;
 use App\Services\Sources\TwitterX;
 use App\Services\Sources\SiteList;
+use App\Services\WordPressService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 
@@ -160,5 +161,35 @@ class InboundsController extends Controller
             Log::error('Regenerate summary failed', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Error regenerating summary'], 500);
         }
+    }
+
+    public function publishToWordPress(Request $request, WordPressService $wordpress, $id)
+    {
+        $inbound = Inbounds::find($id);
+
+        if (!$inbound) {
+            return response()->json(['message' => 'Inbound not found'], 404);
+        }
+
+        $title = $request->input('title', $inbound->source ?? 'Untitled Source');
+        $content = $inbound->summary ?? 'No summary available';
+
+        $categories = $request->input('categories', [29, 30]);
+        $metaInput = $request->input('meta', []);
+        $meta = [
+            'sentiment' => $metaInput['sentiment'] ?? 'neutral',
+            'market_mover' => $metaInput['market_mover'] ?? 'unknown',
+            'sources' => $metaInput['sources'] ?? [
+                [
+                    'title' => $inbound->source,
+                    'url' => $inbound->url,
+                    'excerpt' => $inbound->notes ?? '',
+                ],
+            ],
+        ];
+
+        $response = $wordpress->createPost($title, $content, $categories, $meta);
+        Log::info('WordPress draft response', $response);
+        return response()->json($response);
     }
 }

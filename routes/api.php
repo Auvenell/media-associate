@@ -26,3 +26,4 @@ Route::get('/inbounds/{id}', [InboundsController::class, 'showInbound']);
 Route::put('/inbounds/{id}', [InboundsController::class, 'updateInbound']);
 Route::delete('/inbounds/{id}', [InboundsController::class, 'removeInbound']);
 Route::post('/inbounds/{id}/regenerate', [InboundsController::class, 'regenerateSummary']);
+Route::post('/inbounds/{id}/publish', [InboundsController::class, 'publishToWordPress']);
