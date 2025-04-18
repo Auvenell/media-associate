@@ -62,8 +62,8 @@ class InboundsController extends Controller
             $inbounds->text_path = basename($convertedFilePath);  // store text file path
             $articleContent = file_get_contents($convertedFilePath); // get article content
             $url = $genericSite->getUrlFromPdfText($articleContent); // get article url
-            $inbounds->url = $url[0] ?? null;
-            $inbounds->source = parse_url($inbounds->url, PHP_URL_HOST); // get article publisher
+            $inbounds->url = $url[0] ?? $request->url ?? null;
+            $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null; // get article publisher
             // exit();
 
             $summaryContent = $agent->summaryAgent($articleContent, $inbounds->notes);
