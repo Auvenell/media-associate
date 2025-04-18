@@ -106,6 +106,8 @@ class InboundsController extends Controller
             $inbounds->url = $request->url ?? $inbounds->url;
             $inbounds->notes = $request->notes ?? $inbounds->notes;
             $inbounds->summary = $request->summary ?? $inbounds->summary;
+            $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
+
             $inbounds->save();
             return response()->json(['message' => 'Post Updated'], 200);
         } else {
