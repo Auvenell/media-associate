@@ -9,9 +9,9 @@ use App\Http\Controllers\InboundsController;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| TODO: Authentication
 |
 */
+
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
 });
@@ -25,3 +25,4 @@ Route::get('/inbounds/{id}', [InboundsController::class, 'showInbound']);
 
 Route::put('/inbounds/{id}', [InboundsController::class, 'updateInbound']);
 Route::delete('/inbounds/{id}', [InboundsController::class, 'removeInbound']);
+Route::post('/inbounds/{id}/regenerate', [InboundsController::class, 'regenerateSummary']);

@@ -59,6 +59,7 @@ class InboundsController extends Controller
         if (!in_array($inbounds->source, SiteList::$twitterUrls)) { // all other sites
             $genericSite = new Generic;
             $convertedFilePath = $genericSite->genericSiteHandler($filename); // convert PDF & get text file path
+            $inbounds->text_path = basename($convertedFilePath);  // store text file path
             $articleContent = file_get_contents($convertedFilePath); // get article content
             $url = $genericSite->getUrlFromPdfText($articleContent); // get article url
             $inbounds->url = $url[0] ?? null;
@@ -114,12 +115,48 @@ class InboundsController extends Controller
 
     public function removeInbound($id)
     {
-        $inbounds = Inbounds::find($id);
-        if (!empty($inbounds)) {
-            $inbounds->delete();
+        $inbound = Inbounds::find($id);
+        if (!empty($inbound)) {
+            // Delete the text file if it exists
+            $filePath = '../site-data/conversions/' . $inbound->text_path;
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            // Delete the database record
+            $inbound->delete();
             return response()->json(['message' => 'Post Destroyed'], 200);
         } else {
             return response()->json(['message' => 'Post Not Found'], 404);
+        }
+    }
+
+    public function regenerateSummary($id): JsonResponse
+    {
+        $inbound = Inbounds::find($id);
+
+        if (!$inbound || !$inbound->text_path) {
+            return response()->json(['message' => 'Invalid inbound or missing text path'], 400);
+        }
+
+        $filePath = '../site-data/conversions/' . $inbound->text_path;
+
+        if (!file_exists($filePath)) {
+            return response()->json(['message' => 'Text file not found'], 404);
+        }
+
+        try {
+            $agent = new Agents;
+            $articleContent = file_get_contents($filePath);
+            $summary = $agent->summaryAgent($articleContent, $inbound->notes ?? '');
+
+            $inbound->summary = $summary;
+            $inbound->save();
+
+            return response()->json(['summary' => $summary], 200);
+        } catch (Exception $e) {
+            Log::error('Regenerate summary failed', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Error regenerating summary'], 500);
         }
     }
 }
