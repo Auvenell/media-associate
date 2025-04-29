@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('inbounds', function (Blueprint $table) {
             $table->id();
             $table->integer('user_id');
+            $table->string('post_title');
             $table->string('url');
             $table->longText('notes');
             $table->longText('summary');

@@ -5,16 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Inbounds extends Model
+class Source extends Model
 {
     use HasFactory;
-    protected $table = 'inbounds';
+
     protected $fillable = [
-        'user_id',
+        'inbound_id',
         'url',
-        'notes',
-        'summary',
-        'source',
-        'post_title'
+        'title',
+        'excerpt'
     ];
+
+    public function inbound()
+    {
+        return $this->belongsTo(Inbounds::class);
+    }
 }

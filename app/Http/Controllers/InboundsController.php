@@ -29,11 +29,15 @@ class InboundsController extends Controller
             $pdf->move($destinationPath, $filename);
         }
 
+        // Set URL from request or leave empty for PDF processing
+        $inbounds->url = $request->url ?? null;
         $inbounds->notes = $request->notes ? $request->notes : '';
 
-        if (empty($inbounds->source)) {
-            $inbounds->source = parse_url(json_decode($inbounds->url), PHP_URL_HOST);
+        // Set source based on URL if available
+        if ($inbounds->url) {
+            $inbounds->source = parse_url($inbounds->url, PHP_URL_HOST);
         }
+
         $inbounds->user_id = $request->user_id ?? 1;
 
         // $inboundId = $this->getLastInbound();
@@ -62,10 +66,13 @@ class InboundsController extends Controller
             $convertedFilePath = $genericSite->genericSiteHandler($filename); // convert PDF & get text file path
             $inbounds->text_path = basename($convertedFilePath);  // store text file path
             $articleContent = file_get_contents($convertedFilePath); // get article content
-            $url = $genericSite->getUrlFromPdfText($articleContent); // get article url
-            $inbounds->url = $url[0] ?? $request->url ?? null;
-            $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null; // get article publisher
-            // exit();
+
+            // Only try to extract URL from PDF if none was provided in the request
+            if (!$inbounds->url) {
+                $extractedUrl = $genericSite->getUrlFromPdfText($articleContent);
+                $inbounds->url = $extractedUrl[0] ?? null;
+                $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
+            }
 
             $summaryContent = $agent->summaryAgent($articleContent, $inbounds->notes);
             $inbounds->summary = $summaryContent; // attach summary to model
@@ -73,8 +80,15 @@ class InboundsController extends Controller
                 $inbounds->summary = null;
             }
 
+            // Generate creative title
+            $creativeTitle = $agent->creativeTitleAgent($articleContent);
+            $inbounds->post_title = $creativeTitle ? trim($creativeTitle, '"') : ''; // Remove quotes from the title
+
             $inbounds->save(); // save to db
-            return response()->json($summaryContent, 201);
+            return response()->json([
+                'summary' => $summaryContent,
+                'post_title' => $inbounds->post_title
+            ], 201);
         }
     }
 
@@ -107,10 +121,14 @@ class InboundsController extends Controller
             $inbounds->url = $request->url ?? $inbounds->url;
             $inbounds->notes = $request->notes ?? $inbounds->notes;
             $inbounds->summary = $request->summary ?? $inbounds->summary;
+            $inbounds->post_title = $request->post_title ?? $inbounds->post_title;
             $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
 
             $inbounds->save();
-            return response()->json(['message' => 'Post Updated'], 200);
+            return response()->json([
+                'message' => 'Post Updated',
+                'post_title' => $inbounds->post_title
+            ], 200);
         } else {
             return response()->json(['message' => 'Post Not Found'], 404);
         }
@@ -171,7 +189,7 @@ class InboundsController extends Controller
             return response()->json(['message' => 'Inbound not found'], 404);
         }
 
-        $title = $request->input('title', $inbound->source ?? 'Untitled Source');
+        $title = $inbound->post_title ?: ($inbound->source ?? 'Untitled Source');
         $content = $inbound->summary ?? 'No summary available';
 
         $categories = $request->input('categories', [29, 30]);
@@ -191,5 +209,36 @@ class InboundsController extends Controller
         $response = $wordpress->createPost($title, $content, $categories, $meta);
         Log::info('WordPress draft response', $response);
         return response()->json($response);
+    }
+
+    public function regenerateTitle($id): JsonResponse
+    {
+        $inbound = Inbounds::find($id);
+
+        if (!$inbound || !$inbound->text_path) {
+            return response()->json(['message' => 'Invalid inbound or missing text path'], 400);
+        }
+
+        $filePath = '../site-data/conversions/' . $inbound->text_path;
+
+        if (!file_exists($filePath)) {
+            return response()->json(['message' => 'Text file not found'], 404);
+        }
+
+        try {
+            $agent = new Agents;
+            $articleContent = file_get_contents($filePath);
+            $creativeTitle = $agent->creativeTitleAgent($articleContent);
+            $inbound->post_title = $creativeTitle ? trim($creativeTitle, '"') : '';
+            $inbound->save();
+
+            return response()->json([
+                'message' => 'Title regenerated successfully',
+                'post_title' => $inbound->post_title
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Regenerate title failed', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Error regenerating title'], 500);
+        }
     }
 }

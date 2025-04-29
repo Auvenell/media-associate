@@ -36,7 +36,10 @@ export default function InboundGrid({ inbounds }) {
                     const [marketMover, setMarketMover] = useState("no");
                     const [selectedCategories, setSelectedCategories] =
                         useState([]);
-                    const [wpTitle, setWpTitle] = useState(item.source || "");
+                    const [postTitle, setPostTitle] = useState(
+                        item.post_title || ""
+                    );
+                    const [isEditingTitle, setIsEditingTitle] = useState(false);
                     const toggleCategory = (id) => {
                         setSelectedCategories((prev) =>
                             prev.includes(id)
@@ -104,7 +107,7 @@ export default function InboundGrid({ inbounds }) {
                             await axios.post(
                                 `/api/inbounds/${item.id}/publish`,
                                 {
-                                    title: wpTitle,
+                                    title: postTitle,
                                     categories: selectedCategories,
                                     meta: {
                                         sentiment,
@@ -129,166 +132,286 @@ export default function InboundGrid({ inbounds }) {
                     return (
                         <div
                             key={item.id}
-                            className="flex flex-col p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-shadow w-full"
+                            className="flex flex-col p-6 border border-gray-200 rounded-lg shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-shadow w-full gap-4"
                         >
-                            <div className="mb-2 flex items-center justify-between">
+                            {/* Header Section */}
+                            <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+                                <div className="flex-grow">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                                        {isEditingTitle ? (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={postTitle}
+                                                    onChange={(e) =>
+                                                        setPostTitle(
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="w-full px-3 py-2 border rounded-md text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="Enter post title"
+                                                />
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await axios.put(
+                                                                `api/inbounds/${item.id}`,
+                                                                {
+                                                                    post_title:
+                                                                        postTitle,
+                                                                }
+                                                            );
+                                                            setIsEditingTitle(
+                                                                false
+                                                            );
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            alert(
+                                                                "Error saving title."
+                                                            );
+                                                        }
+                                                    }}
+                                                    className="p-2 text-green-600 hover:text-green-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                                    title="Save Title"
+                                                >
+                                                    ✔
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <span>
+                                                    {postTitle ||
+                                                        "No title set"}
+                                                </span>
+                                                <button
+                                                    onClick={() =>
+                                                        setIsEditingTitle(true)
+                                                    }
+                                                    className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+                                                    title="Edit Title"
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </h3>
+                                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                                        <span className="font-medium mr-2">
+                                            Source:
+                                        </span>
+                                        {isEditingSource ? (
+                                            <div className="flex items-center gap-2 flex-grow">
+                                                <input
+                                                    type="text"
+                                                    value={url}
+                                                    onChange={(e) =>
+                                                        setUrl(e.target.value)
+                                                    }
+                                                    className="flex-grow px-3 py-1 border rounded-md text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                                <button
+                                                    onClick={handleSourceUpdate}
+                                                    className="p-1 text-green-600 hover:text-green-800 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                                    title="Save"
+                                                >
+                                                    ✔
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={item.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-500 hover:text-blue-600 hover:underline"
+                                                >
+                                                    {item.source}
+                                                </a>
+                                                <button
+                                                    onClick={() =>
+                                                        setIsEditingSource(true)
+                                                    }
+                                                    className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
+                                                    title="Edit Source"
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="2"
+                                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content Section */}
+                            <div className="space-y-4">
+                                {/* Categories */}
                                 <div>
-                                    <span className="font-medium">
-                                        Source:{" "}
-                                    </span>
-                                    {isEditingSource ? (
-                                        <input
-                                            type="text"
-                                            value={url}
-                                            onChange={(e) =>
-                                                setUrl(e.target.value)
-                                            }
-                                            className="px-2 py-1 border rounded text-sm dark:bg-gray-900 dark:text-white"
-                                        />
-                                    ) : (
-                                        <a
-                                            href={item.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-400 underline"
-                                        >
-                                            {item.source}
-                                        </a>
-                                    )}
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Categories
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { id: 27, name: "GreenPill" },
+                                            { id: 28, name: "Reports" },
+                                            { id: 29, name: "Technology" },
+                                            { id: 30, name: "US" },
+                                            { id: 31, name: "World" },
+                                        ].map((cat) => (
+                                            <label
+                                                key={cat.id}
+                                                className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCategories.includes(
+                                                        cat.id
+                                                    )}
+                                                    onChange={() =>
+                                                        toggleCategory(cat.id)
+                                                    }
+                                                    className="form-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                />
+                                                <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                                    {cat.name}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="ml-2">
-                                    {isEditingSource ? (
-                                        <button
-                                            onClick={handleSourceUpdate}
-                                            className="bg-white text-green-600 hover:text-green-800 border border-gray-300 px-2 py-1 rounded text-base"
-                                            title="Save"
-                                        >
-                                            ✔
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={() =>
-                                                setIsEditingSource(true)
-                                            }
-                                            className="bg-white text-gray-600 hover:text-gray-800 border border-gray-300 px-2 py-1 rounded text-base"
-                                            title="Edit Source"
-                                        >
-                                            Edit
-                                        </button>
-                                    )}
+
+                                {/* Summary */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        Summary
+                                    </label>
+                                    <textarea
+                                        value={summary}
+                                        onChange={(e) =>
+                                            setSummary(e.target.value)
+                                        }
+                                        className="w-full px-3 py-2 border rounded-md text-sm text-gray-700 dark:text-gray-200 dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                        rows={8}
+                                    />
                                 </div>
-                            </div>
-                            <div className="mt-2">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    WordPress Title:
-                                </label>
-                                <input
-                                    type="text"
-                                    value={wpTitle}
-                                    onChange={(e) => setWpTitle(e.target.value)}
-                                    className="mt-1 block w-full px-2 py-1 border rounded text-sm dark:bg-gray-900 dark:text-white"
-                                    placeholder="Enter post title"
-                                />
-                            </div>
-                            <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Categories:
-                                </label>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                    {[
-                                        { id: 27, name: "GreenPill" },
-                                        { id: 28, name: "Reports" },
-                                        { id: 29, name: "Technology" },
-                                        { id: 30, name: "US" },
-                                        { id: 31, name: "World" },
-                                    ].map((cat) => (
-                                        <label
-                                            key={cat.id}
-                                            className="flex items-center space-x-1 text-sm text-gray-700 dark:text-gray-300"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedCategories.includes(
-                                                    cat.id
-                                                )}
-                                                onChange={() =>
-                                                    toggleCategory(cat.id)
-                                                }
-                                                className="form-checkbox"
-                                            />
-                                            <span>{cat.name}</span>
+
+                                {/* Metadata */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Sentiment
                                         </label>
-                                    ))}
+                                        <select
+                                            value={sentiment}
+                                            onChange={(e) =>
+                                                setSentiment(e.target.value)
+                                            }
+                                            className="w-full px-3 py-2 border rounded-md text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="neutral">
+                                                Neutral
+                                            </option>
+                                            <option value="bullish">
+                                                Bullish
+                                            </option>
+                                            <option value="bearish">
+                                                Bearish
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Market Mover
+                                        </label>
+                                        <select
+                                            value={marketMover}
+                                            onChange={(e) =>
+                                                setMarketMover(e.target.value)
+                                            }
+                                            className="w-full px-3 py-2 border rounded-md text-sm dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        >
+                                            <option value="no">No</option>
+                                            <option value="yes">Yes</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <textarea
-                                value={summary}
-                                onChange={(e) => setSummary(e.target.value)}
-                                className="text-sm text-gray-700 dark:text-gray-200 dark:bg-gray-900 p-2 border rounded resize-none mb-2"
-                                rows={8}
-                            />
-                            <div className="flex flex-wrap items-center gap-4 my-2">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Sentiment:
-                                    </label>
-                                    <select
-                                        value={sentiment}
-                                        onChange={(e) =>
-                                            setSentiment(e.target.value)
-                                        }
-                                        className="mt-1 block w-full px-2 py-1 border rounded text-sm dark:bg-gray-900 dark:text-white"
-                                    >
-                                        <option value="neutral">Neutral</option>
-                                        <option value="bullish">Bullish</option>
-                                        <option value="bearish">Bearish</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Market Mover:
-                                    </label>
-                                    <select
-                                        value={marketMover}
-                                        onChange={(e) =>
-                                            setMarketMover(e.target.value)
-                                        }
-                                        className="mt-1 block w-full px-2 py-1 border rounded text-sm dark:bg-gray-900 dark:text-white"
-                                    >
-                                        <option value="no">No</option>
-                                        <option value="yes">Yes</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="flex justify-end space-x-2 mt-2">
+
+                            {/* Actions */}
+                            <div className="flex justify-end items-center gap-3 pt-4 border-t border-gray-200">
                                 <button
                                     type="button"
                                     onClick={handleRegenerate}
                                     title="Regenerate Summary"
-                                    className="text-white bg-green-600 hover:bg-green-700 px-4 py-1 rounded disabled:opacity-50"
+                                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 transition-colors"
                                     disabled={isRegenerating}
                                 >
-                                    {isRegenerating ? "⏳" : "↻"}
+                                    {isRegenerating ? (
+                                        <svg
+                                            className="animate-spin h-4 w-4"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                                fill="none"
+                                            />
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            />
+                                        </svg>
+                                    ) : (
+                                        "Regenerate"
+                                    )}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleDelete}
                                     title="Delete"
-                                    className="text-white bg-red-600 hover:bg-red-700 px-4 py-1 rounded"
+                                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                                 >
-                                    ⛌
+                                    Delete
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSave}
-                                    className="text-white bg-blue-600 hover:bg-blue-700 px-4 py-1 rounded"
+                                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                 >
                                     Save
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handlePublish}
-                                    className="text-white bg-purple-600 hover:bg-purple-700 px-4 py-1 rounded"
+                                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
                                 >
                                     Publish
                                 </button>

@@ -71,7 +71,7 @@ class Agents
         any numbers or important information. Its okay for your title to be similar to the article\'s original.
         You only return a single title in double quotes without any additional text.';
 
-        $taskDescription = 'Return a list of supporting evidence from the following article: ' . $text;
+        $taskDescription = 'Return a fitting title that takes a unconventional spin on the article: ' . $text;
 
         $query = $agent->query($roleDescription, $taskDescription, 'qwen2.5:14b-instruct-q8_0');
         $response = $agent->callAPI($query);
