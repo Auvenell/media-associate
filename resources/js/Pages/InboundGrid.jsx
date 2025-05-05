@@ -32,10 +32,14 @@ export default function InboundGrid({ inbounds }) {
                         useState(false);
                     const [url, setUrl] = useState(item.url || "");
                     const [source, setSource] = useState(item.source || "");
-                    const [sentiment, setSentiment] = useState("neutral");
-                    const [marketMover, setMarketMover] = useState("no");
+                    const [sentiment, setSentiment] = useState(
+                        item.metadata?.sentiment || "neutral"
+                    );
+                    const [marketMover, setMarketMover] = useState(
+                        item.metadata?.market_mover || "no"
+                    );
                     const [selectedCategories, setSelectedCategories] =
-                        useState([]);
+                        useState(item.metadata?.categories || []);
                     const [postTitle, setPostTitle] = useState(
                         item.post_title || ""
                     );
@@ -50,13 +54,33 @@ export default function InboundGrid({ inbounds }) {
 
                     const handleSave = async () => {
                         try {
-                            await axios.put(`api/inbounds/${item.id}`, {
-                                summary,
-                            });
+                            const response = await axios.put(
+                                `api/inbounds/${item.id}`,
+                                {
+                                    summary,
+                                    metadata: {
+                                        categories: selectedCategories,
+                                        sentiment,
+                                        market_mover: marketMover,
+                                    },
+                                }
+                            );
+
+                            // Update local state with the response data
+                            if (response.data.metadata) {
+                                setSentiment(response.data.metadata.sentiment);
+                                setMarketMover(
+                                    response.data.metadata.market_mover
+                                );
+                                setSelectedCategories(
+                                    response.data.metadata.categories || []
+                                );
+                            }
+
                             alert("Saved!");
                         } catch (err) {
                             console.error(err);
-                            alert("Error saving summary.");
+                            alert("Error saving summary and metadata.");
                         }
                     };
 

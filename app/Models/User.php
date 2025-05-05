@@ -45,6 +45,6 @@ class User extends Authenticatable
 
     public function inbounds()
     {
-        return $this->hasMany(\App\Models\Inbounds::class);
+        return $this->hasMany(Inbounds::class, 'user_id');
     }
 }

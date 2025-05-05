@@ -10,11 +10,17 @@ class Inbounds extends Model
     use HasFactory;
     protected $table = 'inbounds';
     protected $fillable = [
-        'user_id',
         'url',
+        'source',
         'notes',
         'summary',
-        'source',
-        'post_title'
+        'text_path',
+        'post_title',
+        'user_id'
     ];
+
+    public function metadata()
+    {
+        return $this->hasOne(PostMetadata::class, 'inbound_id');
+    }
 }

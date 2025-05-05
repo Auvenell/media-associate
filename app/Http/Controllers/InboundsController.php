@@ -7,6 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Inbounds;
+use App\Models\PostMetadata;
 use App\Services\Agents;
 use App\Services\Sources\Generic;
 use App\Services\Sources\TwitterX;
@@ -85,24 +86,33 @@ class InboundsController extends Controller
             $inbounds->post_title = $creativeTitle ? trim($creativeTitle, '"') : ''; // Remove quotes from the title
 
             $inbounds->save(); // save to db
+
+            // Create initial metadata
+            $inbounds->metadata()->create([
+                'categories' => [],
+                'sentiment' => 'neutral',
+                'market_mover' => 'no',
+            ]);
+
             return response()->json([
                 'summary' => $summaryContent,
-                'post_title' => $inbounds->post_title
+                'post_title' => $inbounds->post_title,
+                'metadata' => $inbounds->metadata
             ], 201);
         }
     }
 
     public function showAllInbounds()
     {
-        $inbounds = Inbounds::all();
+        $inbounds = Inbounds::with('metadata')->get();
         return response()->json($inbounds);
     }
 
     public function showInbound($id)
     {
-        $inbounds = Inbounds::find($id);
-        if (!empty($inbounds)) {
-            return response()->json($inbounds);
+        $inbound = Inbounds::with('metadata')->find($id);
+        if (!empty($inbound)) {
+            return response()->json($inbound);
         } else {
             return response()->json(['message' => 'Post Not Found'], 404);
         }
@@ -116,18 +126,32 @@ class InboundsController extends Controller
 
     public function updateInbound(Request $request, $id)
     {
-        $inbounds = Inbounds::find($id);
-        if (!empty($inbounds)) {
-            $inbounds->url = $request->url ?? $inbounds->url;
-            $inbounds->notes = $request->notes ?? $inbounds->notes;
-            $inbounds->summary = $request->summary ?? $inbounds->summary;
-            $inbounds->post_title = $request->post_title ?? $inbounds->post_title;
-            $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
+        $inbound = Inbounds::find($id);
+        if (!empty($inbound)) {
+            $inbound->url = $request->url ?? $inbound->url;
+            $inbound->notes = $request->notes ?? $inbound->notes;
+            $inbound->summary = $request->summary ?? $inbound->summary;
+            $inbound->post_title = $request->post_title ?? $inbound->post_title;
+            $inbound->source = $inbound->url ? parse_url($inbound->url, PHP_URL_HOST) : null;
 
-            $inbounds->save();
+            // Update or create metadata
+            if ($request->has('metadata')) {
+                $metadata = $request->input('metadata');
+                $inbound->metadata()->updateOrCreate(
+                    ['inbound_id' => $inbound->id],
+                    [
+                        'categories' => $metadata['categories'] ?? [],
+                        'sentiment' => $metadata['sentiment'] ?? 'neutral',
+                        'market_mover' => $metadata['market_mover'] ?? 'no',
+                    ]
+                );
+            }
+
+            $inbound->save();
             return response()->json([
                 'message' => 'Post Updated',
-                'post_title' => $inbounds->post_title
+                'post_title' => $inbound->post_title,
+                'metadata' => $inbound->metadata
             ], 200);
         } else {
             return response()->json(['message' => 'Post Not Found'], 404);
