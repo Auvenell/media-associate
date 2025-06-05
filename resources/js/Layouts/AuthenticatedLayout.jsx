@@ -29,6 +29,13 @@ export default function Authenticated({ user, header, children }) {
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    href={route("articles.upload")}
+                                    active={route().current("articles.upload")}
+                                    className="dark:text-gray-100"
+                                >
+                                    Upload Article
+                                </NavLink>
                             </div>
                         </div>
 
@@ -133,6 +140,13 @@ export default function Authenticated({ user, header, children }) {
                             className="dark:text-gray-100"
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route("articles.upload")}
+                            active={route().current("articles.upload")}
+                            className="dark:text-gray-100"
+                        >
+                            Upload Article
                         </ResponsiveNavLink>
                     </div>
 

@@ -40,7 +40,7 @@ class Agents
         if (!empty($notes)) {
             $taskDescription .= ' and ' . '"' . $notes . '"';
         }
-        $taskDescription .= ' produce a paragraph or sentence to summarize the information and make sure the date is mentioned at the end. Don\'t talk to the user directly.';
+        $taskDescription .= ' produce a paragraph to summarize the information and make sure the date is mentioned at the end. Don\'t talk to the user directly.';
 
         Log::info('Preparing summary agent query', [
             'data_length' => strlen($data),
