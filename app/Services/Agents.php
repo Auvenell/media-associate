@@ -8,6 +8,8 @@ use Exception;
 
 class Agents
 {
+    private const DEFAULT_MODEL = 'qwen3-30b-a3b-dwq';
+
     private function cleanAIResponse($response)
     {
         if (!$response) {
@@ -27,7 +29,7 @@ class Agents
         $roleDescription = 'You are a retriever that parses out text.';
         $taskDescription = '/no_think Parse out the text content and the publish date from' . $text;
 
-        $query = $agent->query($roleDescription, $taskDescription, 'qwen3:30b-a3b-q4_K_M');
+        $query = $agent->query($roleDescription, $taskDescription, self::DEFAULT_MODEL);
         $response = $agent->callAPI($query);
         return $this->cleanAIResponse($response['message']['content'] ?? null);
     }
@@ -47,7 +49,7 @@ class Agents
             'has_notes' => !empty($notes)
         ]);
 
-        $query = $agent->query($roleDescription, $taskDescription, 'qwen3:30b-a3b-q4_K_M');
+        $query = $agent->query($roleDescription, $taskDescription, self::DEFAULT_MODEL);
         $response = $agent->callAPI($query);
         Log::info('Summary agent response', [
             'response' => $response,
@@ -63,7 +65,7 @@ class Agents
         $roleDescription = 'You are an expert at finding details in text articles.';
         $taskDescription = '/no_think Find the article\'s title by finding the author. The preceding text is usually the title. Return just the title in double quotes.' . $text;
 
-        $query = $agent->query($roleDescription, $taskDescription, 'qwen2.5-coder:1.5b');
+        $query = $agent->query($roleDescription, $taskDescription, self::DEFAULT_MODEL);
         $response = $agent->callAPI($query);
 
         return $this->cleanAIResponse($response['message']['content'] ?? null);
@@ -79,7 +81,7 @@ class Agents
 
         $taskDescription = '/no_think Return a list of supporting evidence from the following article: ' . $text;
 
-        $query = $agent->query($roleDescription, $taskDescription, 'qwen3:30b-a3b-q4_K_M');
+        $query = $agent->query($roleDescription, $taskDescription, self::DEFAULT_MODEL);
         $response = $agent->callAPI($query);
 
         return $this->cleanAIResponse($response['message']['content'] ?? null);
@@ -95,7 +97,7 @@ class Agents
 
         $taskDescription = '/no_think Return a fitting title that takes a unconventional spin on the article: ' . $text;
 
-        $query = $agent->query($roleDescription, $taskDescription, 'qwen3:30b-a3b-q4_K_M');
+        $query = $agent->query($roleDescription, $taskDescription, self::DEFAULT_MODEL);
         $response = $agent->callAPI($query);
 
         return $this->cleanAIResponse($response['message']['content'] ?? null);
