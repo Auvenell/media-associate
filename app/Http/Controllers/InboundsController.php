@@ -106,6 +106,17 @@ class InboundsController extends Controller
                         'market_mover' => 'no',
                     ]);
 
+                    // Get title and evidence for sources table
+                    $title = $agent->titleAgent($articleContent);
+                    $evidence = $agent->evidenceAgent($articleContent);
+
+                    // Create source record
+                    $inbounds->sources()->create([
+                        'url' => $inbounds->url,
+                        'title' => $title ? trim($title, '"') : '',
+                        'excerpt' => $evidence ?: ''
+                    ]);
+
                     Log::info('Inbound saved successfully', ['inbound_id' => $inbounds->id]);
 
                     return response()->json([
@@ -235,7 +246,7 @@ class InboundsController extends Controller
 
     public function publishToWordPress(Request $request, WordPressService $wordpress, $id)
     {
-        $inbound = Inbounds::find($id);
+        $inbound = Inbounds::with('sources')->find($id);
 
         if (!$inbound) {
             return response()->json(['message' => 'Inbound not found'], 404);
@@ -249,11 +260,11 @@ class InboundsController extends Controller
         $meta = [
             'sentiment' => $metaInput['sentiment'] ?? 'neutral',
             'market_mover' => $metaInput['market_mover'] ?? 'unknown',
-            'sources' => $metaInput['sources'] ?? [
+            'sources' => [
                 [
-                    'title' => $inbound->source,
-                    'url' => $inbound->url,
-                    'excerpt' => $inbound->notes ?? '',
+                    'title' => $inbound->sources?->title ?? $inbound->source,
+                    'url' => $inbound->sources?->url ?? $inbound->url,
+                    'excerpt' => $inbound->sources?->excerpt ?? ($inbound->notes ?? ''),
                 ],
             ],
         ];

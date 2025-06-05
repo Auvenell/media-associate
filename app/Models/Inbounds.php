@@ -23,4 +23,9 @@ class Inbounds extends Model
     {
         return $this->hasOne(PostMetadata::class, 'inbound_id');
     }
+
+    public function sources()
+    {
+        return $this->hasOne(Sources::class, 'inbound_id');
+    }
 }
