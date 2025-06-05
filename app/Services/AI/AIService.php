@@ -40,7 +40,7 @@ class AIService
         return $decoded;
     }
 
-    public function query($roleDescription, $taskDescription, $model = 'qwen2.5:14b-instruct-q8_0')
+    public function query($roleDescription, $taskDescription, $model = 'qwen3:30b-a3b-q4_K_M')
     {
         $aiQuery = array(
             'model' => $model,

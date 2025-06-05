@@ -20,14 +20,27 @@ class InboundsController extends Controller
 {
     public function receiveInbounds(Request $request)
     {
+        Log::info('Received inbound request', [
+            'has_pdf' => $request->hasFile('pdf'),
+            'has_url' => $request->has('url'),
+            'request_data' => $request->all()
+        ]);
+
         $agent = new Agents;
         $inbounds = new Inbounds;
 
         if ($request->hasFile('pdf') && $request->file('pdf')->isValid()) {
+            Log::info('Processing PDF file');
             $pdf = $request->file('pdf');
             $filename = time() . '-' . $pdf->getClientOriginalName();
             $destinationPath = '../site-data/';
-            $pdf->move($destinationPath, $filename);
+            try {
+                $pdf->move($destinationPath, $filename);
+                Log::info('PDF saved', ['filename' => $filename]);
+            } catch (Exception $e) {
+                Log::error('Failed to save PDF', ['error' => $e->getMessage()]);
+                return response()->json(['error' => 'Failed to save PDF'], 500);
+            }
         }
 
         // Set URL from request or leave empty for PDF processing
@@ -41,64 +54,79 @@ class InboundsController extends Controller
 
         $inbounds->user_id = $request->user_id ?? 1;
 
-        // $inboundId = $this->getLastInbound();
-
-        if (in_array($inbounds->source, SiteList::$twitterUrls)) { // specific handling for Twitter URLs
-            $twitterXHandler = new TwitterX;
-            $tweetRaw = $twitterXHandler->handleTwitterX($request->url);
-            $content = $tweetRaw['text'];
-            $author = $tweetRaw['author'];
-
-            $tweetData = $agent->retrievalAgent($content);
-            $tweetContent = response()->json([$tweetData]);
-            $tweetContent = json_decode($tweetContent->getContent(), true)[0]['original'];
-            $tweetContent = json_decode($tweetContent, true)['choices'][0]['message']['content'];
-
-            $summary = $agent->summaryAgent($tweetContent, $inbounds->notes);
-            $summaryContent = response()->json([$summary]);
-            $summaryContent = json_decode($summaryContent->getContent(), true)[0]['original'];
-            $summaryContent = json_decode($summaryContent, true)['choices'][0]['message']['content'];
-
-            $inbounds->summary = $summaryContent;
-        }
-
         if (!in_array($inbounds->source, SiteList::$twitterUrls)) { // all other sites
-            $genericSite = new Generic;
-            $convertedFilePath = $genericSite->genericSiteHandler($filename); // convert PDF & get text file path
-            $inbounds->text_path = basename($convertedFilePath);  // store text file path
-            $articleContent = file_get_contents($convertedFilePath); // get article content
+            try {
+                $genericSite = new Generic;
+                $convertedFilePath = $genericSite->genericSiteHandler($filename); // convert PDF & get text file path
+                Log::info('File converted', ['converted_path' => $convertedFilePath]);
 
-            // Only try to extract URL from PDF if none was provided in the request
-            if (!$inbounds->url) {
-                $extractedUrl = $genericSite->getUrlFromPdfText($articleContent);
-                $inbounds->url = $extractedUrl[0] ?? null;
-                $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
+                $inbounds->text_path = basename($convertedFilePath);  // store text file path
+                $articleContent = file_get_contents($convertedFilePath); // get article content
+                Log::info('Article content loaded', [
+                    'content_length' => strlen($articleContent),
+                    'file_path' => $convertedFilePath
+                ]);
+
+                // Only try to extract URL from PDF if none was provided in the request
+                if (!$inbounds->url) {
+                    $extractedUrl = $genericSite->getUrlFromPdfText($articleContent);
+                    $inbounds->url = $extractedUrl[0] ?? null;
+                    $inbounds->source = $inbounds->url ? parse_url($inbounds->url, PHP_URL_HOST) : null;
+                }
+
+                $summaryContent = $agent->summaryAgent($articleContent, $inbounds->notes);
+                Log::info('Summary generation attempt', [
+                    'summary_content' => $summaryContent,
+                    'notes' => $inbounds->notes
+                ]);
+
+                $inbounds->summary = $summaryContent; // attach summary to model
+                if (empty($inbounds->summary)) { // blank value for db in case of failure
+                    $inbounds->summary = null;
+                }
+
+                // Generate creative title
+                $creativeTitle = $agent->creativeTitleAgent($articleContent);
+                $inbounds->post_title = $creativeTitle ? trim($creativeTitle, '"') : '';
+
+                try {
+                    Log::info('Attempting to save inbound', [
+                        'url' => $inbounds->url,
+                        'source' => $inbounds->source,
+                        'has_summary' => !empty($inbounds->summary),
+                        'has_title' => !empty($inbounds->post_title)
+                    ]);
+
+                    $inbounds->save(); // save to db
+
+                    // Create initial metadata
+                    $inbounds->metadata()->create([
+                        'categories' => [],
+                        'sentiment' => 'neutral',
+                        'market_mover' => 'no',
+                    ]);
+
+                    Log::info('Inbound saved successfully', ['inbound_id' => $inbounds->id]);
+
+                    return response()->json([
+                        'summary' => $summaryContent,
+                        'post_title' => $inbounds->post_title,
+                        'metadata' => $inbounds->metadata
+                    ], 201);
+                } catch (Exception $e) {
+                    Log::error('Failed to save inbound', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return response()->json(['error' => 'Failed to save inbound'], 500);
+                }
+            } catch (Exception $e) {
+                Log::error('Error processing article', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json(['error' => 'Error processing article'], 500);
             }
-
-            $summaryContent = $agent->summaryAgent($articleContent, $inbounds->notes);
-            $inbounds->summary = $summaryContent; // attach summary to model
-            if (empty($inbounds->summary)) { // blank value for db in case of failure
-                $inbounds->summary = null;
-            }
-
-            // Generate creative title
-            $creativeTitle = $agent->creativeTitleAgent($articleContent);
-            $inbounds->post_title = $creativeTitle ? trim($creativeTitle, '"') : ''; // Remove quotes from the title
-
-            $inbounds->save(); // save to db
-
-            // Create initial metadata
-            $inbounds->metadata()->create([
-                'categories' => [],
-                'sentiment' => 'neutral',
-                'market_mover' => 'no',
-            ]);
-
-            return response()->json([
-                'summary' => $summaryContent,
-                'post_title' => $inbounds->post_title,
-                'metadata' => $inbounds->metadata
-            ], 201);
         }
     }
 
