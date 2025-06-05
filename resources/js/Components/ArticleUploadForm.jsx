@@ -9,6 +9,8 @@ export default function ArticleUploadForm({ auth }) {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState({ type: "", text: "" });
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [processingState, setProcessingState] = useState("");
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -25,10 +27,29 @@ export default function ArticleUploadForm({ auth }) {
         }));
     };
 
+    const getProgressBarColor = () => {
+        if (processingState === "error") return "bg-red-500";
+        if (uploadProgress === 100 && processingState === "processing")
+            return "bg-yellow-500";
+        if (uploadProgress === 100 && processingState === "complete")
+            return "bg-green-500";
+        return "bg-indigo-500";
+    };
+
+    const getProgressText = () => {
+        if (processingState === "error") return "Error occurred";
+        if (uploadProgress < 100) return `Uploading: ${uploadProgress}%`;
+        if (processingState === "processing") return "Processing article...";
+        if (processingState === "complete") return "Complete!";
+        return "";
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
         setMessage({ type: "", text: "" });
+        setUploadProgress(0);
+        setProcessingState("");
 
         const submitData = new FormData();
         submitData.append("url", formData.url);
@@ -39,15 +60,26 @@ export default function ArticleUploadForm({ auth }) {
         }
 
         try {
+            setProcessingState("uploading");
             const response = await axios.post("/api/inbounds", submitData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
+                onUploadProgress: (progressEvent) => {
+                    const progress = Math.round(
+                        (progressEvent.loaded * 100) / progressEvent.total
+                    );
+                    setUploadProgress(progress);
+                    if (progress === 100) {
+                        setProcessingState("processing");
+                    }
+                },
             });
 
+            setProcessingState("complete");
             setMessage({
                 type: "success",
-                text: "Article uploaded successfully!",
+                text: "Article uploaded and processed successfully!",
             });
 
             // Clear form
@@ -61,12 +93,17 @@ export default function ArticleUploadForm({ auth }) {
             const fileInput = document.querySelector('input[type="file"]');
             if (fileInput) fileInput.value = "";
         } catch (error) {
+            setProcessingState("error");
             setMessage({
                 type: "error",
                 text: error.response?.data?.error || "Failed to upload article",
             });
         } finally {
-            setIsSubmitting(false);
+            setTimeout(() => {
+                setIsSubmitting(false);
+                setUploadProgress(0);
+                setProcessingState("");
+            }, 3000);
         }
     };
 
@@ -82,6 +119,29 @@ export default function ArticleUploadForm({ auth }) {
                         }`}
                     >
                         {message.text}
+                    </div>
+                )}
+
+                {(isSubmitting || processingState) && (
+                    <div className="mb-6">
+                        <div className="relative pt-1">
+                            <div className="flex mb-2 items-center justify-between">
+                                <div>
+                                    <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 dark:text-indigo-300">
+                                        {getProgressText()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200 dark:bg-indigo-900">
+                                <div
+                                    style={{
+                                        width: `${uploadProgress}%`,
+                                        transition: "width 0.5s ease-in-out",
+                                    }}
+                                    className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${getProgressBarColor()}`}
+                                ></div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -165,7 +225,7 @@ export default function ArticleUploadForm({ auth }) {
                                         : ""
                                 }`}
                         >
-                            {isSubmitting ? "Uploading..." : "Upload Article"}
+                            {isSubmitting ? "Processing..." : "Upload Article"}
                         </button>
                     </div>
                 </form>
