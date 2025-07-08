@@ -24,7 +24,7 @@ class AIService
 
         return match ($provider) {
             self::PROVIDER_OLLAMA => env('OLLAMA_API_URL', 'http://host.docker.internal:11434/api/chat'),
-            self::PROVIDER_LM_STUDIO => env('LM_STUDIO_API_URL', 'http://host.docker.internal:1234/v1/chat/completions'),
+            self::PROVIDER_LM_STUDIO => env('LM_STUDIO_API_URL', 'http://host.docker.internal:11434/v1/chat/completions'),
             default => throw new Exception("Unsupported AI provider: {$provider}")
         };
     }
@@ -108,7 +108,7 @@ class AIService
         }
     }
 
-    public function query($roleDescription, $taskDescription, $model = 'qwen3:30b-a3b-q4_K_M')
+    public function query($roleDescription, $taskDescription, $model = 'google/gemma-3-12b')
     {
         $aiQuery = array(
             'model' => $model,
